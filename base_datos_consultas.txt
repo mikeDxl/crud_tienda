@@ -1,0 +1,140 @@
+-- Crear la base de datos
+CREATE DATABASE IF NOT EXISTS tienda_db;
+USE tienda_db;
+
+-- Tabla de clientes
+CREATE TABLE clientes (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    nombre VARCHAR(100) NOT NULL,
+    apellido VARCHAR(100) NOT NULL,
+    email VARCHAR(150) UNIQUE NOT NULL,
+    telefono VARCHAR(20),
+    direccion TEXT,
+    ciudad VARCHAR(80),
+    codigo_postal VARCHAR(10),
+    fecha_registro TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    activo BOOLEAN DEFAULT TRUE,
+    INDEX idx_email (email),
+    INDEX idx_nombre (nombre, apellido)
+);
+
+-- Tabla de productos
+CREATE TABLE productos (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    nombre VARCHAR(150) NOT NULL,
+    descripcion TEXT,
+    precio DECIMAL(10,2) NOT NULL,
+    stock INT DEFAULT 0,
+    categoria VARCHAR(50),
+    marca VARCHAR(50),
+    sku VARCHAR(50) UNIQUE,
+    peso DECIMAL(8,2),
+    dimensiones VARCHAR(100),
+    fecha_creacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    fecha_actualizacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    activo BOOLEAN DEFAULT TRUE,
+    INDEX idx_nombre (nombre),
+    INDEX idx_categoria (categoria),
+    INDEX idx_sku (sku),
+    INDEX idx_precio (precio)
+);
+
+-- Tabla de relación entre clientes y productos (compras/pedidos)
+CREATE TABLE cliente_productos (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    cliente_id INT NOT NULL,
+    producto_id INT NOT NULL,
+    cantidad INT NOT NULL DEFAULT 1,
+    precio_unitario DECIMAL(10,2) NOT NULL,
+    precio_total DECIMAL(10,2) NOT NULL,
+    fecha_compra TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    estado_pedido ENUM('pendiente', 'procesando', 'enviado', 'entregado', 'cancelado') DEFAULT 'pendiente',
+    notas TEXT,
+    
+    -- Claves foráneas
+    FOREIGN KEY (cliente_id) REFERENCES clientes(id) ON DELETE CASCADE,
+    FOREIGN KEY (producto_id) REFERENCES productos(id) ON DELETE CASCADE,
+    
+    -- Índices para optimizar consultas
+    INDEX idx_cliente (cliente_id),
+    INDEX idx_producto (producto_id),
+    INDEX idx_fecha (fecha_compra),
+    INDEX idx_estado (estado_pedido),
+    
+    -- Índice compuesto para consultas frecuentes
+    INDEX idx_cliente_fecha (cliente_id, fecha_compra)
+);
+
+-- Insertar datos de ejemplo para clientes
+INSERT INTO clientes (nombre, apellido, email, telefono, direccion, ciudad, codigo_postal) VALUES
+('Juan', 'Pérez', 'juan.perez@email.com', '555-0101', 'Calle Principal 123', 'México DF', '01000'),
+('María', 'González', 'maria.gonzalez@email.com', '555-0102', 'Avenida Central 456', 'Guadalajara', '44100'),
+('Carlos', 'Rodríguez', 'carlos.rodriguez@email.com', '555-0103', 'Boulevard Norte 789', 'Monterrey', '64000'),
+('Ana', 'López', 'ana.lopez@email.com', '555-0104', 'Calle Sur 321', 'Puebla', '72000'),
+('Luis', 'Martínez', 'luis.martinez@email.com', '555-0105', 'Avenida Este 654', 'Tijuana', '22000');
+
+-- Insertar datos de ejemplo para productos
+INSERT INTO productos (nombre, descripcion, precio, stock, categoria, marca, sku, peso) VALUES
+('Laptop HP Pavilion', 'Laptop para uso profesional con 8GB RAM y 512GB SSD', 15999.99, 25, 'Electrónicos', 'HP', 'HP-PAV-001', 2.1),
+('Mouse Logitech MX Master', 'Mouse inalámbrico ergonómico para productividad', 1299.99, 50, 'Accesorios', 'Logitech', 'LOG-MX-002', 0.14),
+('Teclado Mecánico Corsair', 'Teclado mecánico gaming con switches Cherry MX', 2199.99, 30, 'Accesorios', 'Corsair', 'COR-K70-003', 1.2),
+('Monitor Samsung 24"', 'Monitor Full HD de 24 pulgadas para oficina', 3999.99, 15, 'Electrónicos', 'Samsung', 'SAM-MON-004', 4.5),
+('Audífonos Sony WH-1000XM4', 'Audífonos inalámbricos con cancelación de ruido', 5999.99, 20, 'Audio', 'Sony', 'SON-WH-005', 0.25),
+('Impresora Canon PIXMA', 'Impresora multifuncional para hogar y oficina', 2799.99, 12, 'Oficina', 'Canon', 'CAN-PIX-006', 6.2),
+('Disco Duro Externo 1TB', 'Almacenamiento portátil USB 3.0', 1899.99, 40, 'Almacenamiento', 'Seagate', 'SEA-EXT-007', 0.23),
+('Webcam Logitech C920', 'Cámara web HD para videoconferencias', 1599.99, 35, 'Accesorios', 'Logitech', 'LOG-C920-008', 0.16);
+
+-- Insertar datos de ejemplo para cliente_productos (compras)
+INSERT INTO cliente_productos (cliente_id, producto_id, cantidad, precio_unitario, precio_total, estado_pedido) VALUES
+(1, 1, 1, 15999.99, 15999.99, 'entregado'),
+(1, 2, 2, 1299.99, 2599.98, 'entregado'),
+(2, 3, 1, 2199.99, 2199.99, 'enviado'),
+(2, 4, 1, 3999.99, 3999.99, 'procesando'),
+(3, 5, 1, 5999.99, 5999.99, 'entregado'),
+(3, 6, 1, 2799.99, 2799.99, 'entregado'),
+(4, 7, 2, 1899.99, 3799.98, 'pendiente'),
+(4, 8, 1, 1599.99, 1599.99, 'enviado'),
+(5, 1, 1, 15999.99, 15999.99, 'procesando'),
+(5, 2, 1, 1299.99, 1299.99, 'entregado');
+
+-- Consultas útiles para verificar los datos
+
+-- Ver todos los clientes
+SELECT * FROM clientes;
+
+-- Ver todos los productos
+SELECT * FROM productos;
+
+-- Ver compras con información del cliente y producto
+SELECT 
+    cp.id as compra_id,
+    CONCAT(c.nombre, ' ', c.apellido) as cliente,
+    p.nombre as producto,
+    cp.cantidad,
+    cp.precio_unitario,
+    cp.precio_total,
+    cp.fecha_compra,
+    cp.estado_pedido
+FROM cliente_productos cp
+JOIN clientes c ON cp.cliente_id = c.id
+JOIN productos p ON cp.producto_id = p.id
+ORDER BY cp.fecha_compra DESC;
+
+-- Ver total de compras por cliente
+SELECT 
+    CONCAT(c.nombre, ' ', c.apellido) as cliente,
+    COUNT(cp.id) as total_compras,
+    SUM(cp.precio_total) as total_gastado
+FROM clientes c
+LEFT JOIN cliente_productos cp ON c.id = cp.cliente_id
+GROUP BY c.id, c.nombre, c.apellido;
+
+-- Ver productos más vendidos
+SELECT 
+    p.nombre,
+    SUM(cp.cantidad) as total_vendido,
+    SUM(cp.precio_total) as ingresos_generados
+FROM productos p
+LEFT JOIN cliente_productos cp ON p.id = cp.producto_id
+GROUP BY p.id, p.nombre
+ORDER BY total_vendido DESC;
